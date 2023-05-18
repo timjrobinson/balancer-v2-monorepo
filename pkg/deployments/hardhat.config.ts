@@ -26,7 +26,7 @@ import {
   getActionIdInfo,
   fetchTheGraphPermissions,
 } from './src/actionId';
-import { checkContractDeploymentAddresses, saveContractDeploymentAddresses } from './src/network';
+import { checkContractDeploymentAddresses, saveContractDeploymentAddresses, saveContractNameToAddressMap } from './src/network';
 import { name } from './package.json';
 
 const THEGRAPHURLS: { [key: string]: string } = {
@@ -299,6 +299,24 @@ task(
   }
 });
 
+task('build-contract-to-address-map', `Build a lookup table from contract name to it's latest address`).setAction(
+  async (args: { verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
+    Logger.setDefaults(false, args.verbose || false);
+    if (hre.network.name === 'hardhat') {
+      logger.warn(`invalid network: ${hre.network.name}`);
+      return;
+    }
+
+    // Create Task objects, excluding tokens tasks.
+    const tasks = Task.getAllTaskIds()
+      .filter((taskId) => !taskId.startsWith('00000000-'))
+      .map((taskId) => new Task(taskId, TaskMode.READ_ONLY, hre.network.name));
+
+    saveContractNameToAddressMap(tasks, hre.network.name);
+    logger.success(`Contract to address map generated for network ${hre.network.name}`);
+  }
+);
+
 task(TASK_TEST).addOptionalParam('id', 'Specific task ID of the fork test to run.').setAction(test);
 
 export default {
@@ -319,7 +337,7 @@ export default {
   etherscan: {
     customChains: [
       {
-        network: 'zkemv',
+        network: 'zkevm',
         chainId: 1101,
         urls: {
           apiURL: 'https://api-zkevm.polygonscan.com/api',

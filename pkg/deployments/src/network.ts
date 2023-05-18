@@ -5,7 +5,8 @@ import Task from './task';
 import { Network } from './types';
 
 const DEPLOYMENT_TXS_DIRECTORY = path.resolve(__dirname, '../deployment-txs');
-const CONTRACT_ADDRESSES_DIRECTORY = path.resolve(__dirname, '../addresses');
+const ADDRESSES_DIRECTORY = path.resolve(__dirname, '../addresses');
+const CONTRACTS_DIRECTORY = path.resolve(__dirname, '../contracts');
 
 export function saveContractDeploymentTransactionHash(
   deployedAddress: string,
@@ -49,7 +50,7 @@ export function saveContractDeploymentAddresses(tasks: Task[], network: string):
   if (network === 'hardhat') return;
 
   const allTaskEntries = buildContractDeploymentAddressesEntries(tasks);
-  const filePath = path.join(CONTRACT_ADDRESSES_DIRECTORY, `${network}.json`);
+  const filePath = path.join(ADDRESSES_DIRECTORY, `${network}.json`);
 
   fs.writeFileSync(filePath, _stringifyEntries(allTaskEntries));
 }
@@ -57,7 +58,7 @@ export function saveContractDeploymentAddresses(tasks: Task[], network: string):
 /**
  * Builds an object that maps deployment addresses to {task ID, contract name} for all given tasks.
  */
-export function buildContractDeploymentAddressesEntries(tasks: Task[]): object {
+export function buildContractDeploymentAddressesEntries(tasks: Task[]): Record<string, { task: string; name: string }> {
   let allTaskEntries = {};
 
   for (const task of tasks) {
@@ -74,13 +75,44 @@ export function buildContractDeploymentAddressesEntries(tasks: Task[]): object {
 }
 
 /**
+ * Saves a file with the canonical deployment addresses for all tasks in a given network.
+ */
+export function saveContractNameToAddressMap(tasks: Task[], network: string): void {
+  if (network === 'hardhat') return;
+
+  const allTaskEntries = buildContractNameToAddressMap(tasks);
+  const filePath = path.join(CONTRACTS_DIRECTORY, `${network}.json`);
+
+  fs.writeFileSync(filePath, _stringifyEntries(allTaskEntries));
+}
+
+/**
+ * Builds an object that maps contract names to it's most recent address for all given tasks.
+ */
+export function buildContractNameToAddressMap(tasks: Task[]): Record<string, string> {
+  let allTaskEntries = {};
+
+  for (const task of tasks) {
+    const taskEntries = task.output({ ensure: false });
+    allTaskEntries = {
+      ...allTaskEntries,
+      ...taskEntries,
+    };
+  }
+
+  const sortedEntries = Object.fromEntries(Object.entries(allTaskEntries).sort(([nameA], [nameB]) => nameA.localeCompare(nameB))) as Record<string, string>;
+
+  return sortedEntries;
+}
+
+/**
  * Returns true if the existing deployment addresses file stored in `CONTRACT_ADDRESSES_DIRECTORY` matches the
  * canonical one for the given network; false otherwise.
  */
 export function checkContractDeploymentAddresses(tasks: Task[], network: string): boolean {
   const allTaskEntries = buildContractDeploymentAddressesEntries(tasks);
 
-  const filePath = path.join(CONTRACT_ADDRESSES_DIRECTORY, `${network}.json`);
+  const filePath = path.join(ADDRESSES_DIRECTORY, `${network}.json`);
   const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
 
   // Load the existing content if any exists.
