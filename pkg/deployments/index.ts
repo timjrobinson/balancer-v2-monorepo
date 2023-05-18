@@ -115,3 +115,11 @@ function getBalancerDeploymentPath(task: string, network: string): string {
 function getBalancerContractAddresses(network: string): string {
   return `@balancer-labs/v2-deployments/dist/addresses/${network}.json`;
 }
+
+/**
+ * @dev Returns a map of Contract Name -> Address on a network
+ * @param network Name of the network looking the deployment path for (e.g. mainnet, polygon, goerli, etc)
+ */
+export function getBalancerContracts(network: string): Record<string, string> {
+  return require(`@balancer-labs/v2-deployments/dist/contracts/${network}.json`);
+}
